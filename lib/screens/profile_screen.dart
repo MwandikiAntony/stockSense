@@ -84,7 +84,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         });
       }
     } catch (e) {
-
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -430,7 +429,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ],
 
                   // Sign Out Section
-                  _buildSignOutSection(),
+                  if (!AuthService.isTrialSession) _buildSignOutSection(),
 
                   const SizedBox(height: 20),
                 ],
@@ -576,15 +575,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ? Colors.amber[300]
                   : Colors.amber[700], // Theme-aware amber color
             ),
-            _buildSettingsOption(
-              icon: Icons.security,
-              title: 'Security',
-              subtitle: 'Change password and security settings',
-              onTap: () => _showChangePasswordDialog(),
-              iconColor: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.orange[300]
-                  : Colors.orange[700], // Theme-aware orange color
-            ),
+            if (!AuthService.isTrialSession)
+              _buildSettingsOption(
+                icon: Icons.security,
+                title: 'Security',
+                subtitle: 'Change password and security settings',
+                onTap: () => _showChangePasswordDialog(),
+                iconColor: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.orange[300]
+                    : Colors.orange[700], // Theme-aware orange color
+              ),
             _buildSettingsOption(
               icon: Icons.help,
               title: 'Help & Support',
@@ -1151,13 +1151,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ? Colors.grey.withValues(alpha: 0.3)
                     : Colors.grey.withValues(alpha: 0.1)),
             backgroundImage: MemoryImage(bytes),
-            onBackgroundImageError: (exception, stackTrace) {
-
-            },
+            onBackgroundImageError: (exception, stackTrace) {},
           );
-        } catch (e) {
-
-        }
+        } catch (e) {}
       } else {
         // Handle network URLs
         return CircleAvatar(
@@ -1169,9 +1165,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ? Colors.grey.withValues(alpha: 0.3)
                   : Colors.grey.withValues(alpha: 0.1)),
           backgroundImage: NetworkImage(user.profilePhotoPath!),
-          onBackgroundImageError: (exception, stackTrace) {
-
-          },
+          onBackgroundImageError: (exception, stackTrace) {},
         );
       }
     }

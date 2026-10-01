@@ -3,50 +3,46 @@ import 'auth_service.dart';
 
 class TrialService {
   static const String _firstLaunchKey = 'first_launch_date';
+  static const String _trialUsedKey = 'trial_used';
   static const int trialDurationDays = 14;
 
-  /// Returns the first launch date (now from user profile).
-  static Future<DateTime> getFirstLaunchDate() async {
-    final user = AuthService.currentUser;
-    if (user != null && user.trialStartDate != null) {
-      return user.trialStartDate!;
-    }
-    
-    // Fallback (e.g., if user profile hasn't loaded or field is missing)
-    final prefs = await SharedPreferences.getInstance();
-    final String? firstLaunchStr = prefs.getString(_firstLaunchKey);
+  // The trial clock comes only from the account's server-side trialStartDate.
+  static DateTime? get _trialStart => AuthService.currentUser?.trialStartDate;
 
-    if (firstLaunchStr == null) {
-      final now = DateTime.now();
-      await prefs.setString(_firstLaunchKey, now.toIso8601String());
-      return now;
-    }
+  /// Kept for existing callers.
+  static Future<DateTime> getFirstLaunchDate() async =>
+      _trialStart ?? DateTime.now();
 
-    return DateTime.parse(firstLaunchStr);
-  }
-
-  /// Checks if the trial period has expired.
   static Future<bool> isTrialExpired() async {
-    final firstLaunch = await getFirstLaunchDate();
-    final now = DateTime.now();
-    final difference = now.difference(firstLaunch).inDays;
-    
-    return difference >= trialDurationDays;
+    final start = _trialStart;
+    if (start == null) return false;
+    return DateTime.now().difference(start) >=
+        const Duration(days: trialDurationDays);
   }
 
-  /// Returns the number of days remaining in the trial.
   static Future<int> getRemainingDays() async {
-    final firstLaunch = await getFirstLaunchDate();
-    final now = DateTime.now();
-    final difference = now.difference(firstLaunch).inDays;
-    
-    final remaining = trialDurationDays - difference;
+    final start = _trialStart;
+    if (start == null) return trialDurationDays;
+    final remaining =
+        trialDurationDays - DateTime.now().difference(start).inDays;
     return remaining < 0 ? 0 : remaining;
   }
 
-  /// Reset trial (for development/testing purposes only)
+  /// Set when an expired trial is logged out; stops this browser restarting a trial.
+  static Future<bool> isTrialUsed() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_trialUsedKey) ?? false;
+  }
+
+  static Future<void> markTrialUsed() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_trialUsedKey, true);
+  }
+
+  /// Development/testing only.
   static Future<void> resetTrial() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_firstLaunchKey);
+    await prefs.remove(_trialUsedKey);
   }
 }
