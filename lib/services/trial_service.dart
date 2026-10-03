@@ -1,48 +1,94 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'auth_service.dart';
+import 'trial_policy.dart';
+
+export 'trial_policy.dart';
 
 class TrialService {
-  static const String _firstLaunchKey = 'first_launch_date';
-  static const String _trialUsedKey = 'trial_used';
-  static const int trialDurationDays = 14;
+  static const String _startKey = 'trial_start_ms';
+  static const String _legacyKey = 'first_launch_date';
+  static const int trialDurationDays = TrialPolicy.durationDays;
 
-  // The trial clock comes only from the account's server-side trialStartDate.
-  static DateTime? get _trialStart => AuthService.currentUser?.trialStartDate;
-
-  /// Kept for existing callers.
-  static Future<DateTime> getFirstLaunchDate() async =>
-      _trialStart ?? DateTime.now();
-
-  static Future<bool> isTrialExpired() async {
-    final start = _trialStart;
-    if (start == null) return false;
-    return DateTime.now().difference(start) >=
-        const Duration(days: trialDurationDays);
+  static Future<DateTime?> _storedStart() async {
+    final prefs = await SharedPreferences.getInstance();
+    final ms = prefs.getInt(_startKey);
+    return ms == null ? null : DateTime.fromMillisecondsSinceEpoch(ms);
   }
+
+  static Future<void> _persistStart(DateTime start) async {
+    final prefs = await SharedPreferences.getInstance();
+    final ms = prefs.getInt(_startKey);
+    final existing =
+        ms == null ? null : DateTime.fromMillisecondsSinceEpoch(ms);
+    final earliest = TrialPolicy.earliest(existing, start);
+    if (earliest != null) {
+      await prefs.setInt(_startKey, earliest.millisecondsSinceEpoch);
+    }
+  }
+
+  /// Earliest of the browser-remembered start and the account's start.
+  static Future<DateTime?> _effectiveStart() async => TrialPolicy.earliest(
+      await _storedStart(), AuthService.currentUser?.trialStartDate);
+
+  /// Status of the current session. Non-trial (email) accounts are never gated.
+  static Future<TrialStatus> currentStatus() async {
+    if (!AuthService.isTrialSession) return TrialStatus.active;
+    return TrialPolicy.evaluate(await _effectiveStart(), DateTime.now());
+  }
+
+  static Future<bool> isTrialExpired() async =>
+      (await currentStatus()) != TrialStatus.active;
+
+  static Future<DateTime> getFirstLaunchDate() async =>
+      (await _effectiveStart()) ?? DateTime.now();
 
   static Future<int> getRemainingDays() async {
-    final start = _trialStart;
-    if (start == null) return trialDurationDays;
-    final remaining =
-        trialDurationDays - DateTime.now().difference(start).inDays;
-    return remaining < 0 ? 0 : remaining;
+    final start = await _effectiveStart();
+    if (start == null) return TrialPolicy.durationDays;
+    return TrialPolicy.remainingDays(start, DateTime.now());
   }
 
-  /// Set when an expired trial is logged out; stops this browser restarting a trial.
-  static Future<bool> isTrialUsed() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_trialUsedKey) ?? false;
-  }
+  /// True when this browser already used up a full trial.
+  static Future<bool> isTrialUsed() async =>
+      TrialPolicy.evaluate(await _storedStart(), DateTime.now()) ==
+      TrialStatus.expired;
 
+  /// Remember the current start date on this browser (survives logout).
   static Future<void> markTrialUsed() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_trialUsedKey, true);
+    final start = await _effectiveStart();
+    if (start != null) await _persistStart(start);
+  }
+
+  /// "Sign Out" during an active trial: keep the account and the start date.
+  static Future<void> leaveTrial() => markTrialUsed();
+
+  /// Start or resume the trial. Validates the start date before access.
+  static Future<TrialStatus> beginTrial() async {
+    final stored = await _storedStart();
+
+    // A trial already remembered on this browser never starts over.
+    if (stored != null) {
+      final s = TrialPolicy.evaluate(stored, DateTime.now());
+      if (s != TrialStatus.active) {
+        if (AuthService.isTrialSession) await AuthService.signOut();
+        return s;
+      }
+    }
+
+    final user = await AuthService.startTrial(resumeStart: stored);
+    if (user == null) return TrialStatus.invalid;
+
+    final start = (await _effectiveStart()) ?? DateTime.now();
+    final status = TrialPolicy.evaluate(start, DateTime.now());
+    if (status != TrialStatus.invalid) await _persistStart(start);
+    if (status != TrialStatus.active) await AuthService.signOut();
+    return status;
   }
 
   /// Development/testing only.
   static Future<void> resetTrial() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_firstLaunchKey);
-    await prefs.remove(_trialUsedKey);
+    await prefs.remove(_startKey);
+    await prefs.remove(_legacyKey);
   }
 }

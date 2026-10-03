@@ -4,7 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../utils/consultation_utils.dart';
-import '../services/auth_service.dart';
 import '../services/trial_service.dart';
 import '../widgets/trial_expired_dialog.dart';
 import 'auth/widget_tree.dart';
@@ -34,12 +33,18 @@ class _LandingScreenState extends State<LandingScreen>
     if (_startingTrial) return;
     setState(() => _startingTrial = true);
     try {
-      if (await TrialService.isTrialUsed()) {
-        if (mounted) await TrialExpiredDialog.show(context, signedIn: false);
+      final status = await TrialService.beginTrial();
+      if (!mounted) return;
+      if (status == TrialStatus.expired) {
+        await TrialExpiredDialog.show(context, signedIn: false);
         return;
       }
-      await AuthService.startTrial();
-      if (!mounted) return;
+      if (status == TrialStatus.invalid) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text(
+                'We could not verify your trial. Please contact Cloudora.')));
+        return;
+      }
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const WidgetTree()),
       );

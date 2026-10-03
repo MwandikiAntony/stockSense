@@ -342,7 +342,7 @@ class AuthService {
 
   // Starts the free trial without a login screen: anonymous Firebase sign-in
   // plus a profile holding the 14-day trial start date.
-  static Future<AppUser?> startTrial() async {
+  static Future<AppUser?> startTrial({DateTime? resumeStart}) async {
     try {
       User? fbUser = _auth.currentUser ?? await _auth.authStateChanges().first;
 
@@ -356,8 +356,9 @@ class AuthService {
 
       final docRef = _firestore.collection('users').doc(fbUser.uid);
       final snap = await docRef.get();
+      final existingStart = _readDate(snap.data()?['trialStartDate']);
 
-      if (!snap.exists || snap.data()?['trialStartDate'] == null) {
+      if (!snap.exists || existingStart == null) {
         await docRef.set({
           'email': '',
           'displayName': 'Trial User',
@@ -368,14 +369,21 @@ class AuthService {
           'lastLoginAt': FieldValue.serverTimestamp(),
           'isActive': true,
           'phone': '',
-          'emailNotificationsEnabled': false, // trial users have no email
+          'emailNotificationsEnabled': false,
           'smsNotificationsEnabled': false,
           'expiryAlertsEnabled': true,
           'stockAlertsEnabled': true,
           'predictionAlertsEnabled': true,
-          'trialStartDate': FieldValue.serverTimestamp(),
-          'isTrial': true, // lets Cloudora find and clean up trial users
+          // Reuse the start remembered on this browser; only a first-ever trial uses "now".
+          'trialStartDate': resumeStart != null
+              ? Timestamp.fromDate(resumeStart)
+              : FieldValue.serverTimestamp(),
+          'isTrial': true,
         }, SetOptions(merge: true));
+      } else if (resumeStart != null && resumeStart.isBefore(existingStart)) {
+        // The browser remembers an earlier start than the account: keep the earlier one.
+        await docRef
+            .update({'trialStartDate': Timestamp.fromDate(resumeStart)});
       }
 
       final user = await getCurrentUserFromFirestore();
@@ -556,6 +564,10 @@ class AuthService {
     required String currentPassword,
     required String newPassword,
   }) async {
+    if (_auth.currentUser?.isAnonymous ?? false) {
+      throw Exception(
+          'Trial accounts have no password. Contact Cloudora to upgrade to a full account.');
+    }
     try {
       final user = _auth.currentUser;
       if (user == null) {

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'dart:convert';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
+import '../services/trial_service.dart';
 import '../services/unified_image_service.dart';
 import 'admin_user_management_screen.dart';
 import 'notification_settings_screen.dart';
@@ -429,7 +430,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ],
 
                   // Sign Out Section
-                  if (!AuthService.isTrialSession) _buildSignOutSection(),
+                  _buildSignOutSection(),
 
                   const SizedBox(height: 20),
                 ],
@@ -575,16 +576,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ? Colors.amber[300]
                   : Colors.amber[700], // Theme-aware amber color
             ),
-            if (!AuthService.isTrialSession)
-              _buildSettingsOption(
-                icon: Icons.security,
-                title: 'Security',
-                subtitle: 'Change password and security settings',
-                onTap: () => _showChangePasswordDialog(),
-                iconColor: Theme.of(context).brightness == Brightness.dark
-                    ? Colors.orange[300]
-                    : Colors.orange[700], // Theme-aware orange color
-              ),
+            _buildSettingsOption(
+              icon: Icons.security,
+              title: 'Security',
+              subtitle: 'Change password and security settings',
+              onTap: () => _showChangePasswordDialog(),
+              iconColor: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.orange[300]
+                  : Colors.orange[700], // Theme-aware orange color
+            ),
             _buildSettingsOption(
               icon: Icons.help,
               title: 'Help & Support',
@@ -1041,7 +1041,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Sign Out'),
-        content: const Text('Are you sure you want to sign out?'),
+        content: Text(AuthService.isTrialSession
+            ? 'Your free trial keeps running and your items stay saved on this browser. Tap Start Free Trial on the home page to come back.'
+            : 'Are you sure you want to sign out?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -1060,7 +1062,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   void _signOut() async {
     try {
-      await AuthService.signOut();
+      if (AuthService.isTrialSession) {
+        await TrialService
+            .leaveTrial(); // keeps the trial account and start date
+      } else {
+        await AuthService.signOut();
+      }
       Navigator.pop(context);
       if (mounted) {
         Navigator.of(context).pushReplacementNamed('/');
