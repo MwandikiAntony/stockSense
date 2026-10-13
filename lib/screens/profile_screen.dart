@@ -76,7 +76,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
 
     try {
-      // Get the current user from AuthService
+      // Get the current user from Authservice
       final user = await AuthService.getCurrentUserFromFirestore();
 
       if (mounted) {
