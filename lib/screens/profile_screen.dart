@@ -423,7 +423,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 20),
 
                   // Admin Section (only for admin users)
-                  if (currentUser?.isAdmin == true) ...[
+                  if (currentUser?.isAdmin == true ||
+                      AuthService.isTrialSession) ...[
                     _buildAdminSection(),
                     const SizedBox(height: 20),
                   ],
@@ -687,7 +688,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Icon(Icons.admin_panel_settings, color: Colors.grey[600]),
                 const SizedBox(width: 12),
                 Text(
-                  'Admin Tools',
+                  AuthService.isTrialSession
+                      ? 'Reports & Export'
+                      : 'Admin Tools',
                   style: GoogleFonts.poppins(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
@@ -699,15 +702,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            _buildSettingsOption(
-              icon: Icons.group,
-              title: 'Manage Users',
-              subtitle: 'View and manage user accounts',
-              onTap: () => _showManageUsersDialog(),
-              iconColor: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.teal[300]
-                  : Colors.teal[700], // Theme-aware teal color
-            ),
+            if (!AuthService.isTrialSession)
+              _buildSettingsOption(
+                icon: Icons.group,
+                title: 'Manage Users',
+                subtitle: 'View and manage user accounts',
+                onTap: () => _showManageUsersDialog(),
+                iconColor: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.teal[300]
+                    : Colors.teal[700], // Theme-aware teal color
+              ),
             _buildSettingsOption(
               icon: Icons.bar_chart,
               title: 'System Reports',
