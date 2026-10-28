@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'dart:convert';
 import '../services/inventory_service.dart';
 import '../services/auth_service.dart';
 import '../services/trial_service.dart';
@@ -23,6 +22,7 @@ import '../widgets/upgrade_widgets.dart';
 import 'inventory_form_screen.dart';
 import 'qr_scanner_screen.dart';
 import 'expiry_alerts_screen.dart';
+import '../widgets/user_avatar.dart';
 
 class DashboardScreen extends StatefulWidget {
   final ValueChanged<int> onTabSelected;
@@ -186,7 +186,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       greeting: greeting,
       userName: _getFirstName(currentUser?.displayName.split(',')[0] ?? 'User'),
       themeToggleButton: _buildThemeToggleButton(),
-      profileAvatar: _buildUserAvatar(currentUser),
+      profileAvatar: UserAvatar(
+        photo: currentUser?.profilePhotoPath,
+        name: currentUser?.displayName ?? 'User',
+        size: 56,
+        onPrimary: true,
+      ),
     );
   }
 
@@ -255,82 +260,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         );
       },
-    );
-  }
-
-  Widget _buildDefaultAvatar() {
-    final initials = _getInitials(currentUser?.displayName ?? 'User');
-    return Container(
-      width: 60,
-      height: 60,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.white.withValues(alpha: 0.2),
-      ),
-      child: Center(
-        child: Text(
-          initials,
-          style: GoogleFonts.poppins(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildUserAvatar(dynamic user) {
-    if (user?.profilePhotoPath != null && user!.profilePhotoPath!.isNotEmpty) {
-      // Handle base64 data URLs
-      if (user.profilePhotoPath!.startsWith('data:image')) {
-        try {
-          final base64String = user.profilePhotoPath!.split(',')[1];
-          final bytes = base64Decode(base64String);
-          return CircleAvatar(
-            backgroundColor: user.isActive
-                ? (Theme.of(context).brightness == Brightness.dark
-                    ? Theme.of(context).primaryColor.withValues(alpha: 0.2)
-                    : Theme.of(context).primaryColor.withValues(alpha: 0.1))
-                : (Theme.of(context).brightness == Brightness.dark
-                    ? Colors.grey.withValues(alpha: 0.3)
-                    : Colors.grey.withValues(alpha: 0.1)),
-            backgroundImage: MemoryImage(bytes),
-            onBackgroundImageError: (exception, stackTrace) {},
-          );
-        } catch (e) {}
-      } else {
-        // Handle network URLs
-        return CircleAvatar(
-          backgroundColor: user.isActive
-              ? (Theme.of(context).brightness == Brightness.dark
-                  ? Theme.of(context).primaryColor.withValues(alpha: 0.2)
-                  : Theme.of(context).primaryColor.withValues(alpha: 0.1))
-              : (Theme.of(context).brightness == Brightness.dark
-                  ? Colors.grey.withValues(alpha: 0.3)
-                  : Colors.grey.withValues(alpha: 0.1)),
-          backgroundImage: NetworkImage(user.profilePhotoPath!),
-          onBackgroundImageError: (exception, stackTrace) {},
-        );
-      }
-    }
-
-    // Fallback to initials
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return CircleAvatar(
-      // Use the same soft white tint as the theme toggle for consistency
-      backgroundColor: Colors.white.withValues(alpha: 0.2),
-      child: Text(
-        user?.displayName.isNotEmpty == true
-            ? user.displayName[0].toUpperCase()
-            : 'U',
-        style: GoogleFonts.poppins(
-          fontWeight: FontWeight.w600,
-          color: user?.isActive == true
-              ? (isDark ? Colors.white : Theme.of(context).primaryColor)
-              : (isDark ? Colors.white70 : Colors.grey[700]),
-        ),
-      ),
     );
   }
 
