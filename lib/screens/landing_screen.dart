@@ -12,6 +12,7 @@ import '../widgets/trial_expired_dialog.dart';
 import 'auth/widget_tree.dart';
 import 'legal_screen.dart';
 import 'package:flutter/rendering.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 // ---------------------------------------------------------------------------
 // Design tokens
