@@ -1287,9 +1287,8 @@ class _LandingScreenState extends State<LandingScreen>
   }
 }
 
-// ---------------------------------------------------------------------------
 // FAQ content
-// ---------------------------------------------------------------------------
+
 class _Faq {
   final String q;
   final String a;

@@ -32,7 +32,6 @@ class LegalDoc {
 }
 
 /// Cloudora's Terms and Conditions and Privacy Policy for the Inventory
-/// Management System, as supplied by Cloudora.
 class LegalContent {
   /// Set these when Cloudora provides the dates. While empty they are not shown.
   static const String effectiveDate = '';

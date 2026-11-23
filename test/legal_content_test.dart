@@ -43,7 +43,7 @@ void main() {
     expect(LegalContent.privacy.sections.last.body,
         contains(ContactConfig.privacyEmail));
   });
-
+// test registered address
   test('the registered address sentence appears only when an address is set',
       () {
     final hasAddress = ContactConfig.registeredAddress.isNotEmpty;

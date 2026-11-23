@@ -15,6 +15,5 @@ class ContactConfig {
 
   static const String phone = '+254 759 585 197';
 
-  /// Optional: digits only, e.g. '2547XXXXXXXX'. Adds a WhatsApp link.
   static const String whatsapp = '254 759 585 197';
 }
